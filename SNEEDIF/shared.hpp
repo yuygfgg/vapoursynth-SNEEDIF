@@ -13,7 +13,6 @@
 #endif
 
 #include "half_float/umHalf.h"
-#include "vectorclass/vectorclass.h"
 
 #include <VSHelper4.h>
 #include <VapourSynth4.h>
