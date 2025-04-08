@@ -4,6 +4,7 @@
 
 #include "NNEDI3.cl"
 
+#include "SNEEDIF/half_float/umHalf.h"
 #include "shared.hpp"
 
 static constexpr int numNSIZE = 7;

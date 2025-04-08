@@ -12,8 +12,6 @@
 #define CL_TARGET_OPENCL_VERSION 300
 #endif
 
-#include "half_float/umHalf.h"
-
 #include <VSHelper4.h>
 #include <VapourSynth4.h>
 #include <algorithm>
@@ -22,10 +20,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <locale>
 #include <memory>
-#include <sstream>
-#include <string>
+
 #include <thread>
 #include <unordered_map>
 
