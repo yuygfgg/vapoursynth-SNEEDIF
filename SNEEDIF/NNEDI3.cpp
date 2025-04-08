@@ -14,9 +14,64 @@ static constexpr int nnsTable[numNNS] = { 16, 32, 64, 128, 256 };
 
 template<typename T, bool dw, bool dh, bool transpose_first>
 static void filter(
-    const VSFrame *src, VSFrame *dst, const int field_n, const NNEDI3Data * const VS_RESTRICT d, const VSAPI *vsapi
+    const VSFrame *src, VSFrame *dst, const int field_n, NNEDI3Data * const VS_RESTRICT d, const VSAPI *vsapi
 ) {
     auto threadId = std::this_thread::get_id();
+
+    if (!d->queue.count(threadId)) {
+        std::lock_guard<std::mutex> lock(d->initMutex);
+        if (!d->queue.count(threadId)) {
+            try {
+                d->queue.emplace(threadId, compute::command_queue { d->context, d->device });
+
+                cl_image_format imageFormat { CL_R, CL_SIGNED_INT8 };
+
+                if (d->vi.format.sampleType == stInteger) {
+                    if (d->vi.format.bytesPerSample == 1)
+                        imageFormat.image_channel_data_type = CL_UNSIGNED_INT8;
+                    else if (d->vi.format.bytesPerSample == 2)
+                        imageFormat.image_channel_data_type = CL_UNSIGNED_INT16;
+                    else if (d->vi.format.bytesPerSample == 4)
+                        imageFormat.image_channel_data_type = CL_UNSIGNED_INT32;
+                } else {
+                    if (d->vi.format.bytesPerSample == 2)
+                        imageFormat.image_channel_data_type = CL_HALF_FLOAT;
+                    else if (d->vi.format.bytesPerSample == 4)
+                        imageFormat.image_channel_data_type = CL_FLOAT;
+                }
+
+                d->kernel.emplace(threadId, d->program.create_kernel("filter"));
+
+                d->src.emplace(
+                    threadId,
+                    compute::image2d { d->context, static_cast<size_t>(dw ? d->vi.width / 2 + 8 : d->vi.width),
+                                        static_cast<size_t>(dh ? d->vi.height / 2 + 8 : d->vi.height),
+                                        compute::image_format { imageFormat },
+                                        CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY }
+                );
+
+                d->dst.emplace(
+                    threadId,
+                    compute::image2d { d->context, static_cast<size_t>(d->vi.width), static_cast<size_t>(d->vi.height),
+                                        compute::image_format { imageFormat },
+                                        CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY }
+                );
+
+                d->tmp.emplace(
+                    threadId, (dh && dw) ? compute::image2d { d->context,
+                                                            static_cast<size_t>(std::max(d->vi.width, d->vi.height)),
+                                                            static_cast<size_t>(std::max(d->vi.width, d->vi.height)),
+                                                            compute::image_format { imageFormat },
+                                                            CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS }
+                                        : compute::image2d {}
+                );
+            } catch (const std::string &error) {
+                throw;
+            } catch (const compute::opencl_error &error) {
+                throw;
+            }
+        }
+    }
 
     auto queue = d->queue.at(threadId);
     auto kernel = d->kernel.at(threadId);

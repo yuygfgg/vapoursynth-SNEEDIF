@@ -81,6 +81,7 @@ struct NNEDI3Data {
         std::unordered_map<std::thread::id, compute::image2d> src, dst, tmp;
         compute::buffer weights0, weights1Buffer;
         ClMemHolder weights1;
+        std::mutex initMutex;
 };
 
 void VS_CC nnedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);

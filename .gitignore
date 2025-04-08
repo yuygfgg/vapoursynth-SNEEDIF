@@ -115,3 +115,4 @@ $RECYCLE.BIN/
 .cache/*
 checks.json
 .vscode/*
+.DS_Store
